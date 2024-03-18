@@ -24,7 +24,7 @@ INCLUDES := -I$(OUTPUT) -I../../libbpf/include/uapi -I$(dir $(VMLINUX)) -I$(LIBB
 CFLAGS := -g -Wall
 ALL_LDFLAGS := $(LDFLAGS) $(EXTRA_LDFLAGS)
 
-APPS = minimal minimal_legacy bootstrap uprobe kprobe fentry usdt sockfilter tc ksyscall task_iter lsm
+APPS = tc1 tc2
 
 CARGO ?= $(shell which cargo)
 ifeq ($(strip $(CARGO)),)
@@ -101,8 +101,19 @@ $(LIBBLAZESYM_OBJ): $(LIBBLAZESYM_SRC)/target/release/libblazesym_c.a | $(OUTPUT
 	$(call msg,LIB, $@)
 	$(Q)cp $(LIBBLAZESYM_SRC)/target/release/libblazesym_c.a $@
 
+.PHONY: FORCE
+
+FORCE:;
+
+def.h: FORCE
+	sed -e 's/\/\* IFINDEX_1_H. Replace me. \*\//$(IFINDEX_1_H)/g' \
+		-e 's/\/\* IFINDEX_1_C. Replace me. \*\//$(IFINDEX_1_C)/g' \
+		-e 's/\/\* IFINDEX_2_H. Replace me. \*\//$(IFINDEX_2_H)/g' \
+		-e 's/\/\* IFINDEX_2_C. Replace me. \*\//$(IFINDEX_2_C)/g' \
+		def.h.template > $@
+
 # Build BPF code
-$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(VMLINUX) | $(OUTPUT) $(BPFTOOL)
+$(OUTPUT)/%.bpf.o: %.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(VMLINUX) def.h | $(OUTPUT) $(BPFTOOL)
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH)		      \
 		     $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES)		      \

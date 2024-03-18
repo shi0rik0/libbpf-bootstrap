@@ -1,0 +1,8 @@
+#define IFINDEX_1_H /* IFINDEX_1_H. Replace me. */
+#define IFINDEX_1_C /* IFINDEX_1_C. Replace me. */
+#define IFINDEX_2_H /* IFINDEX_2_H. Replace me. */
+#define IFINDEX_2_C /* IFINDEX_2_C. Replace me. */
+#define BPF_F_C2C (1ULL << 4)
+#define PACKET_HOST 0
+#define TC_ACT_OK 0
+#define ETH_P_IP 0x0800

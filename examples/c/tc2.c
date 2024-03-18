@@ -2,9 +2,8 @@
 /* Copyright (c) 2022 Hengqi Chen */
 #include <signal.h>
 #include <unistd.h>
-#include "tc.skel.h"
-
-#define LO_IFINDEX 1
+#include "tc2.skel.h"
+#include "def.h"
 
 static volatile sig_atomic_t exiting = 0;
 
@@ -20,16 +19,38 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va
 
 int main(int argc, char **argv)
 {
-	DECLARE_LIBBPF_OPTS(bpf_tc_hook, tc_hook, .ifindex = LO_IFINDEX,
-			    .attach_point = BPF_TC_INGRESS);
+	if (argc < 2) {
+		fprintf(stderr, "Please specify program type (1, 2 or 3).\n");
+		return 1;
+	}
+
+	int ifindex;
+	int attach_point;
+
+	if (strcmp(argv[1], "1") == 0) {
+		ifindex = IFINDEX_2_H;
+		attach_point = BPF_TC_INGRESS;
+	} else if (strcmp(argv[1], "2") == 0) {
+		ifindex = IFINDEX_2_H;
+		attach_point = BPF_TC_INGRESS;
+	} else if (strcmp(argv[1], "3") == 0) {
+		ifindex = IFINDEX_2_C;
+		attach_point = BPF_TC_EGRESS;
+	} else {
+		fprintf(stderr, "Unsupported program type.\n");
+		return 1;
+	}
+	
+	DECLARE_LIBBPF_OPTS(bpf_tc_hook, tc_hook, .ifindex = ifindex,
+			    .attach_point = attach_point);
 	DECLARE_LIBBPF_OPTS(bpf_tc_opts, tc_opts, .handle = 1, .priority = 1);
 	bool hook_created = false;
-	struct tc_bpf *skel;
+	struct tc2_bpf *skel;
 	int err;
 
 	libbpf_set_print(libbpf_print_fn);
 
-	skel = tc_bpf__open_and_load();
+	skel = tc2_bpf__open_and_load();
 	if (!skel) {
 		fprintf(stderr, "Failed to open BPF skeleton\n");
 		return 1;
@@ -49,7 +70,13 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	tc_opts.prog_fd = bpf_program__fd(skel->progs.tc_ingress);
+	if (strcmp(argv[1], "1") == 0) {
+		tc_opts.prog_fd = bpf_program__fd(skel->progs.tc_ingress1);
+	} else if (strcmp(argv[1], "2") == 0) {
+		tc_opts.prog_fd = bpf_program__fd(skel->progs.tc_ingress2);
+	} else if (strcmp(argv[1], "3") == 0) {
+		tc_opts.prog_fd = bpf_program__fd(skel->progs.tc_ingress3);
+	}
 	err = bpf_tc_attach(&tc_hook, &tc_opts);
 	if (err) {
 		fprintf(stderr, "Failed to attach TC: %d\n", err);
@@ -80,6 +107,6 @@ int main(int argc, char **argv)
 cleanup:
 	if (hook_created)
 		bpf_tc_hook_destroy(&tc_hook);
-	tc_bpf__destroy(skel);
+	tc2_bpf__destroy(skel);
 	return -err;
 }
